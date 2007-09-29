@@ -65,10 +65,10 @@ void runServer()
 
 		bytes = recvfrom(fd, jid, sizeof(jid)-1, 0, (sockaddr*) &addr2, &len);
 		
-		if(!bytes)
-			continue;
-
 		jid[bytes] = 0;
+		
+		if(!strchr(jid, '@'))
+			continue;
 		response = getStatus(jid);
 
 		sendto(fd, response.c_str(), response.size(), 0, (sockaddr*) &addr2, sizeof addr2);
