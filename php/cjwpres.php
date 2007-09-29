@@ -3,6 +3,22 @@
 function getStatus($jid)
 {
 	$result = array();
+	$response = getStatusSimple($jid);
+	$lines = explode("\n", $response);
+	foreach($lines as $line)
+	{
+		if(strlen($line) == 0)
+			continue;
+		list($resource, $priority, $status, $message) = explode("\t", $line);
+		$message = str_replace(array('\n', '\t'), array("\n", "\t"), $message);
+		$result[] = array('resource' => $resource, 'priority' => $priority, 'status' => $status, 'message' => $message);
+	}
+	
+	return $result;
+}
+
+function getStatusSimple($jid)
+{
 	$response = $name = $port = null;
 
 	$socket = socket_create(AF_INET, SOCK_DGRAM, 0);
@@ -13,19 +29,11 @@ function getStatus($jid)
 	if(socket_select($readfds, $writefds, $excptfds, 5) > 0)
 	{
 		socket_recvfrom($socket, $response, 65535, 0, $name, $port);
-		
-		$lines = explode("\n", $response);
-		foreach($lines as $line)
-		{
-			if(strlen($line) == 0)
-				continue;
-			list($resource, $priority, $status, $message) = explode("\t", $line);
-			$message = str_replace(array('\n', '\t'), array("\n", "\t"), $message);
-			$result[] = array('resource' => $resource, 'priority' => $priority, 'status' => $status, 'message' => $message);
-		}
 	}
 	
-	return $result;
+	socket_close($socket);
+	
+	return $response;
 }
 
 ?>
