@@ -106,8 +106,9 @@ string getStatus(const char* jid)
 			it != pres.end();
 			it++)
 		{
-			char* line = new char[it->message.size()+1024];
 			string message = escapeString(it->message);
+			char* line = new char[message.size()+it->resource.size()+1024];
+			
 			sprintf(line, "%s\t%d\t%s\t%s\n",
 				it->resource.c_str(),
 				it->priority,
