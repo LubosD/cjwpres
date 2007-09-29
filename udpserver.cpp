@@ -33,6 +33,8 @@
 using namespace std;
 
 extern StatusBot* g_bot;
+extern pthread_mutex_t g_presenceMut;
+
 string getStatus(const char* jid);
 string escapeString(string in);
 
@@ -79,6 +81,7 @@ string getStatus(const char* jid)
 
 	cout << "Getting status for: " << jid << endl;
 
+	pthread_mutex_lock(&g_presenceMut);
 	for(multimap<string,PresenceInfo>::const_iterator it = g_presence.begin();
 		it != g_presence.end();
 		it++)
@@ -86,6 +89,7 @@ string getStatus(const char* jid)
 		if(it->first == jid)
 			pres.push_back(it->second);
 	}
+	pthread_mutex_unlock(&g_presenceMut);
 
 	if(pres.empty())
 	{

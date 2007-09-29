@@ -38,5 +38,6 @@ public:
 	void addJID(string jid);
 private:
 	Client* m_pClient;
+	RosterManager* m_pRoster;
 };
 

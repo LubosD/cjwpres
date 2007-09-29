@@ -27,10 +27,12 @@
 using namespace std;
 
 std::multimap<std::string,PresenceInfo> g_presence;
+pthread_mutex_t g_presenceMut;
+
 extern StatusBot* g_bot;
 
 StatusBot::StatusBot()
-: m_pClient(0)
+: m_pClient(0), m_pRoster(0)
 {
 	JID jid(BOT_JID);
 	
@@ -52,20 +54,27 @@ StatusBot::~StatusBot()
 
 void StatusBot::addJID(string jid)
 {
-	RosterManager* pRoster = m_pClient->rosterManager();
+	if(!m_pRoster)
+		m_pRoster = m_pClient->rosterManager();
 	
-	Roster* roster = pRoster->roster();
+	Roster* roster = m_pRoster->roster();
 	if(roster->find(jid) != roster->end())
-    		return;
+		return;
 	
 	cout << "Adding new JID: " << jid << endl;
-	pRoster->subscribe(JID(jid));
-	pRoster->synchronize();
+	
+	pthread_mutex_lock(&g_presenceMut);
+	m_pRoster->subscribe(JID(jid));
+	m_pRoster->synchronize();
+	pthread_mutex_unlock(&g_presenceMut);
 }
 
 void StatusBot::handleMessage(Stanza* stanza, MessageSession* session)
 {
-	Stanza *s = Stanza::createMessageStanza(stanza->from().full(), "I'm just a stupid presence bot - (C) 2007 Lubos Dolezel");
+	Stanza *s = Stanza::createMessageStanza(stanza->from().full(),
+			"I'm just a stupid presence bot\n"
+			"Copyright 2007 Lubos Dolezel\n"
+			"http://www.dolezel.info");
 	
 	m_pClient->send(s);
 }
@@ -110,16 +119,23 @@ void StatusBot::handlePresence(Stanza* stanza)
 	{
 		if(it->first == user && it->second.resource == in.resource)
 		{
+			pthread_mutex_lock(&g_presenceMut);
 			if(!removing)
 				it->second = in;
 			else
 				g_presence.erase(it);
+			pthread_mutex_unlock(&g_presenceMut);
+			
 			found = true;
 			break;
 		}
 	}
 
 	if(!found && !removing)
+	{
+		pthread_mutex_lock(&g_presenceMut);
 		g_presence.insert(pair<string,PresenceInfo>(user, in));
+		pthread_mutex_unlock(&g_presenceMut);
+	}
 }
 
