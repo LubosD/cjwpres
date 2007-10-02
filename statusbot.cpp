@@ -63,10 +63,8 @@ void StatusBot::addJID(string jid)
 	
 	cout << "Adding new JID: " << jid << endl;
 	
-	pthread_mutex_lock(&g_presenceMut);
 	m_pRoster->subscribe(JID(jid));
 	m_pRoster->synchronize();
-	pthread_mutex_unlock(&g_presenceMut);
 }
 
 void StatusBot::handleMessage(Stanza* stanza, MessageSession* session)
