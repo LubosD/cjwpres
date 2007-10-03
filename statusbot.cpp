@@ -27,31 +27,41 @@
 using namespace std;
 using namespace gloox;
 
-extern StatusBot* g_bot;
-
 StatusBot::StatusBot()
 : m_pClient(0), m_pRoster(0)
 {
-	JID jid(BOT_JID);
-	
 	pthread_mutex_init(&m_presenceMut, 0);
-	g_bot = this;
-
-	m_pClient = new Client(jid, BOT_PASSWORD);
-	m_pClient->registerMessageHandler(this);
-	m_pClient->setPresence(PresenceAvailable, 5);
-
-	m_pRoster = m_pClient->rosterManager();
-	m_pRoster->registerRosterListener(this);
-	
-	m_pClient->connect();
-	throw runtime_error("Connection error");
 }
 
 StatusBot::~StatusBot()
 {
 	pthread_mutex_destroy(&m_presenceMut);
 	delete m_pClient;
+}
+
+void StatusBot::start()
+{
+	JID jid(BOT_JID);
+	
+	m_pClient = new Client(jid, BOT_PASSWORD);
+	m_pClient->registerMessageHandler(this);
+	m_pClient->registerConnectionListener(this);
+	m_pClient->setPresence(PresenceAvailable, 5);
+
+	m_pRoster = m_pClient->rosterManager();
+	m_pRoster->registerRosterListener(this);
+	
+	m_pClient->connect(); // this function returns only in case of failure
+	
+	delete m_pClient;
+	m_pClient = 0;
+	
+	throw runtime_error("Connect failed");
+}
+
+void StatusBot::stop()
+{
+	m_pClient->disconnect();
 }
 
 void StatusBot::addJID(string jid)
@@ -154,4 +164,30 @@ void StatusBot::handleRosterPresence(const RosterItem& item, const std::string& 
 		m_presence.insert(pair<string,PresenceInfo>(user, in));
 		pthread_mutex_unlock(&m_presenceMut);
 	}
+}
+
+void StatusBot::onConnect()
+{
+	cout << "Successfully connected to the Jabber server\n";
+}
+
+void StatusBot::onDisconnect(ConnectionError e)
+{
+	if(e != ConnNoError)
+	{
+		if(e == ConnAuthenticationFailed)
+			throw runtime_error("ConnAuthenticationFailed");
+		else // to lazy to write other descriptions
+			throw runtime_error("Connection error");
+	}
+}
+
+void StatusBot::onResourceBindError(ResourceBindError error)
+{
+	throw runtime_error("ResourceBindError");
+}
+
+void StatusBot::onSessionCreateError(SessionCreateError error)
+{
+	throw runtime_error("SessionCreateError");
 }

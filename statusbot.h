@@ -22,6 +22,7 @@
 #include <gloox/messagehandler.h>
 #include <gloox/presencehandler.h>
 #include <gloox/rostermanager.h>
+#include <gloox/connectionlistener.h>
 #include <string>
 #include <map>
 #include <list>
@@ -29,16 +30,27 @@
 #include "defaultrosterlistener.h"
 #include "data.h"
 
-class StatusBot : public gloox::MessageHandler, public DefaultRosterListener
+class StatusBot : public gloox::MessageHandler, public gloox::ConnectionListener, public DefaultRosterListener
 {
 public:
 	StatusBot();
 	~StatusBot();
-	virtual void handleMessage(gloox::Stanza* stanza, gloox::MessageSession* session = 0);
-	virtual void handleRosterPresence(const gloox::RosterItem & item, const std::string& resource, gloox::Presence presence, const std::string& msg);
+	
+	void start();
+	void stop();
 	
 	void addJID(std::string jid);
 	void getPresence(std::string jid, std::list<PresenceInfo>& out);
+	
+	virtual void handleMessage(gloox::Stanza* stanza, gloox::MessageSession* session = 0);
+	virtual void handleRosterPresence(const gloox::RosterItem & item, const std::string& resource, gloox::Presence presence, const std::string& msg);
+	
+	virtual void onConnect();
+	virtual void onDisconnect (gloox::ConnectionError e);
+	virtual void onResourceBindError(gloox::ResourceBindError error);
+	virtual void onSessionCreateError(gloox::SessionCreateError error);
+	virtual bool onTLSConnect(const gloox::CertInfo &info) { return true; }
+	virtual void onStreamEvent(gloox::StreamEvent event) {}
 private:
 	gloox::Client* m_pClient;
 	gloox::RosterManager* m_pRoster;

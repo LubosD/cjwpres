@@ -34,15 +34,17 @@ void handleError(const exception& e);
 
 int main()
 {
+	pthread_t id;
+	
 	try
 	{
-		pthread_t id;
-		
 		pthread_create(&id, 0, statusBot, 0);
 		runServer();
 	}
 	catch(const exception& e)
 	{
+		g_bot->stop();
+		
 		handleError(e);
 	}
 	
@@ -53,10 +55,14 @@ void* statusBot(void*)
 {
 	try
 	{
-		StatusBot bot;
+		g_bot = new StatusBot;
+		g_bot->start();
 	}
 	catch(const exception& e)
 	{
+		delete g_bot;
+		g_bot = 0;
+		
 		handleError(e);
 	}
 }
