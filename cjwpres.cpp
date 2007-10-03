@@ -28,7 +28,6 @@
 using namespace std;
 
 StatusBot* g_bot = 0;
-extern pthread_mutex_t g_presenceMut;
 
 void* statusBot(void*);
 void handleError(const exception& e);
@@ -39,8 +38,6 @@ int main()
 	{
 		pthread_t id;
 		
-		pthread_mutex_init(&g_presenceMut, 0);
-		
 		pthread_create(&id, 0, statusBot, 0);
 		runServer();
 	}
@@ -48,8 +45,6 @@ int main()
 	{
 		handleError(e);
 	}
-	
-	pthread_mutex_destroy(&g_presenceMut);
 	
 	return 1;
 }

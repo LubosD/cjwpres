@@ -81,15 +81,7 @@ string getStatus(const char* jid)
 
 	cout << "Getting status for: " << jid << endl;
 
-	pthread_mutex_lock(&g_presenceMut);
-	for(multimap<string,PresenceInfo>::const_iterator it = g_presence.begin();
-		it != g_presence.end();
-		it++)
-	{
-		if(it->first == jid)
-			pres.push_back(it->second);
-	}
-	pthread_mutex_unlock(&g_presenceMut);
+	g_bot->getPresence(jid, pres);
 
 	if(pres.empty())
 	{

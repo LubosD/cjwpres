@@ -38,7 +38,5 @@ struct PresenceInfo
 	}
 };
 
-extern std::multimap<std::string,PresenceInfo> g_presence;
-
 #endif
 

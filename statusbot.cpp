@@ -25,9 +25,7 @@
 #include <stdexcept>
 
 using namespace std;
-
-std::multimap<std::string,PresenceInfo> g_presence;
-pthread_mutex_t g_presenceMut;
+using namespace gloox;
 
 extern StatusBot* g_bot;
 
@@ -36,27 +34,28 @@ StatusBot::StatusBot()
 {
 	JID jid(BOT_JID);
 	
+	pthread_mutex_init(&m_presenceMut, 0);
 	g_bot = this;
 
 	m_pClient = new Client(jid, BOT_PASSWORD);
 	m_pClient->registerMessageHandler(this);
-	m_pClient->registerPresenceHandler(this);
 	m_pClient->setPresence(PresenceAvailable, 5);
 
-	if(!m_pClient->connect())
-		throw runtime_error("Connection error");
+	m_pRoster = m_pClient->rosterManager();
+	m_pRoster->registerRosterListener(this);
+	
+	m_pClient->connect();
+	throw runtime_error("Connection error");
 }
 
 StatusBot::~StatusBot()
 {
+	pthread_mutex_destroy(&m_presenceMut);
 	delete m_pClient;
 }
 
 void StatusBot::addJID(string jid)
-{
-	if(!m_pRoster)
-		m_pRoster = m_pClient->rosterManager();
-	
+{	
 	Roster* roster = m_pRoster->roster();
 	if(roster->find(jid) != roster->end())
 		return;
@@ -77,17 +76,37 @@ void StatusBot::handleMessage(Stanza* stanza, MessageSession* session)
 	m_pClient->send(s);
 }
 
-void StatusBot::handlePresence(Stanza* stanza)
+void StatusBot::getPresence(std::string jid, std::list<PresenceInfo>& out)
 {
-	string user = stanza->from().bare();
+	out.clear();
+	pthread_mutex_lock(&m_presenceMut);
+	
+	for(multimap<string,PresenceInfo>::const_iterator it = m_presence.begin();
+		it != m_presence.end();
+		it++)
+	{
+		if(it->first == jid)
+			out.push_back(it->second);
+	}
+	
+	pthread_mutex_unlock(&m_presenceMut);
+}
+
+void StatusBot::handleRosterPresence(const RosterItem& item, const std::string& resource, Presence presence, const std::string& msg)
+{
+	string user = item.jid();
 	PresenceInfo in;
 	bool removing = false;
+	
+	if(const Resource* res = item.resource(resource))
+		in.priority = res->priority();
+	else
+		in.priority = 0;
+	
+	in.resource = resource;
+	in.message = msg;
 
-	in.resource = stanza->from().resource();
-	in.priority = stanza->priority();
-	in.message = stanza->status();
-
-	switch(stanza->presence())
+	switch(presence)
 	{
 	case PresenceAvailable:
 		in.status = "available"; break;
@@ -111,18 +130,18 @@ void StatusBot::handlePresence(Stanza* stanza)
 
 	bool found = false;
 
-	for(multimap<string,PresenceInfo>::iterator it = g_presence.begin();
-		it != g_presence.end();
+	for(multimap<string,PresenceInfo>::iterator it = m_presence.begin();
+		it != m_presence.end();
 		it++)
 	{
 		if(it->first == user && it->second.resource == in.resource)
 		{
-			pthread_mutex_lock(&g_presenceMut);
+			pthread_mutex_lock(&m_presenceMut);
 			if(!removing)
 				it->second = in;
 			else
-				g_presence.erase(it);
-			pthread_mutex_unlock(&g_presenceMut);
+				m_presence.erase(it);
+			pthread_mutex_unlock(&m_presenceMut);
 			
 			found = true;
 			break;
@@ -131,9 +150,8 @@ void StatusBot::handlePresence(Stanza* stanza)
 
 	if(!found && !removing)
 	{
-		pthread_mutex_lock(&g_presenceMut);
-		g_presence.insert(pair<string,PresenceInfo>(user, in));
-		pthread_mutex_unlock(&g_presenceMut);
+		pthread_mutex_lock(&m_presenceMut);
+		m_presence.insert(pair<string,PresenceInfo>(user, in));
+		pthread_mutex_unlock(&m_presenceMut);
 	}
 }
-

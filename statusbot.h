@@ -24,20 +24,26 @@
 #include <gloox/rostermanager.h>
 #include <string>
 #include <map>
+#include <list>
 
-using namespace gloox;
-using namespace std;
+#include "defaultrosterlistener.h"
+#include "data.h"
 
-class StatusBot : public MessageHandler, public PresenceHandler
+class StatusBot : public gloox::MessageHandler, public DefaultRosterListener
 {
 public:
 	StatusBot();
 	~StatusBot();
-	virtual void handleMessage(Stanza* stanza, MessageSession* session = 0);
-	virtual void handlePresence(Stanza* stanza);
-	void addJID(string jid);
+	virtual void handleMessage(gloox::Stanza* stanza, gloox::MessageSession* session = 0);
+	virtual void handleRosterPresence(const gloox::RosterItem & item, const std::string& resource, gloox::Presence presence, const std::string& msg);
+	
+	void addJID(std::string jid);
+	void getPresence(std::string jid, std::list<PresenceInfo>& out);
 private:
-	Client* m_pClient;
-	RosterManager* m_pRoster;
+	gloox::Client* m_pClient;
+	gloox::RosterManager* m_pRoster;
+	
+	std::multimap<std::string,PresenceInfo> m_presence;
+	pthread_mutex_t m_presenceMut;
 };
 
